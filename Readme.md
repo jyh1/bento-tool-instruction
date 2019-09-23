@@ -1,26 +1,25 @@
-# BENTO Tool Instruction
-- [BENTO Tool Instruction](#bento-tool-instruction)
-  - [Set up Docker environment](#set-up-docker-environment)
-    - [Docker Basics](#docker-basics)
-      - [Test Docker installation](#test-docker-installation)
-      - [Image v.s. Container](#image-vs-container)
-      - [Mount folders to container](#mount-folders-to-container)
-    - [Build your docker image](#build-your-docker-image)
-      - [Pick a base image](#pick-a-base-image)
-      - [Customize your container](#customize-your-container)
-      - [Create your image](#create-your-image)
-      - [Publish to DockerHub](#publish-to-dockerhub)
-    - [Common Problems](#common-problems)
-  - [Use CodaLab](#use-codalab)
-    - [Introduction](#introduction)
-    - [CodaLab Basics](#codalab-basics)
-      - [cl run](#cl-run)
-    - [Run commands on CodaLab](#run-commands-on-codalab)
-      - [Upload code and data](#upload-code-and-data)
-      - [Run command](#run-command)
-  - [The BENTO Tool Design Pattern](#the-bento-tool-design-pattern)
-      - [Split pipeline into smaller steps](#split-pipeline-into-smaller-steps)
-      - [Use command line arguments](#use-command-line-arguments)
+# BENTO Tool Instruction <!-- omit in toc -->
+- [Set up Docker environment](#set-up-docker-environment)
+  - [Docker Basics](#docker-basics)
+    - [Test Docker installation](#test-docker-installation)
+    - [Image v.s. Container](#image-vs-container)
+    - [Mount folders to container](#mount-folders-to-container)
+  - [Build your docker image](#build-your-docker-image)
+    - [Pick a base image](#pick-a-base-image)
+    - [Customize your container](#customize-your-container)
+    - [Create your image](#create-your-image)
+    - [Publish to DockerHub](#publish-to-dockerhub)
+  - [Common Problems](#common-problems)
+- [Use CodaLab](#use-codalab)
+  - [Introduction](#introduction)
+  - [CodaLab Basics](#codalab-basics)
+    - [cl run](#cl-run)
+  - [Run commands on CodaLab](#run-commands-on-codalab)
+    - [Upload code and data](#upload-code-and-data)
+    - [Run command](#run-command)
+- [The BENTO Tool Design Pattern](#the-bento-tool-design-pattern)
+  - [Split into smaller steps](#split-into-smaller-steps)
+  - [Use command-line arguments](#use-command-line-arguments)
 ## Set up Docker environment
 Docker container provides an OS-level virtualization where you can specify the exact system environments for executing your code, so your experiment results could be easily reproduced by others or even yourself at a future date. 
 
@@ -106,12 +105,14 @@ Resource punkt not found.
 ```
 Another error occurred, repeating the same process as before:
 ```shell
-root@f590d7c561e1:/opt/example# python -c 'import nltk; nltk.download("punkt")'
+root@f590d7c561e1:/opt/example# python -c 'import nltk; nltk.download("punkt", download_dir="/opt/conda/nltk_data")'
 [nltk_data] Downloading package punkt to /root/nltk_data...
 [nltk_data]   Unzipping tokenizers/punkt.zip.
 ```
 
-The code finally worked:
+(The default location for nltk_data is `~/nltk_data`, we changed it so the container will work when we login as other user).
+
+Keep installing missing packages until the program runs correctly:
 ```bash
 root@f590d7c561e1:/opt/example# python code/main.py data/sample.txt result.txt
 ['an', 'example', 'sentence', '.']
@@ -159,7 +160,7 @@ docker run --runtime nvidia -it --rm  -v $PWD:/opt/example jyh1/bento:example py
 Some common problems when migrating your code to a docker environment:
 
 1. Hard-coded file paths
-   - Try to avoid hard coded file paths in your program, use command line options instead. This applies to both reading (accessing data file) and writing (generating results). Quite possibly file paths hard-coded in your program do not exist in the container. This will become more necessary when using CodaLab.
+   - Try to avoid hard coded file paths in your program, use command-line arguments instead. This applies to both reading (accessing data file) and writing (generating results). Quite possibly file paths hard-coded in your program do not exist in the container. This will become more necessary when using CodaLab.
 2. What to include in a docker image
    - A container can access data from either its private virtualized disk (populated from its image) or the volumes mounted from host system. In an extreme scenario, you can include your data/code and everything you need in the image, so you don't need to mount any thing to run your code. This will bloat the size of image and make it harder to be reused (building a new image every time the codes are updated or use a new data set). As a rule of thumb, only include libraries/executable distributed by a package-management system in the image and dynamically mount your own code directory and data.
 
@@ -176,22 +177,32 @@ CodaLab can be thought as a high-level interface of Docker designed for the purp
 [A quick introduction video of CodaLab](https://www.youtube.com/watch?time_continue=9&v=WwFGfgf3-5s).
 
 ### CodaLab Basics
-It is recommended to use our own CodaLab server and follow the [quick example](https://github.com/codalab/worksheets-examples/blob/master/00-quickstart/README.md) to get a feeling of how it works.
+It is recommended to follow the [quick example](https://github.com/codalab/worksheets-examples/blob/master/00-quickstart/README.md) first to get a feeling of how it works.
+
+It is recommended to use our own CodaLab instance at [https://bio-nlp.org/codalab/](https://bio-nlp.org/codalab/), not to be confused with the public instance of CodaLab: [https://worksheets.codalab.org/](https://worksheets.codalab.org/). You can create an account on it and start submitting jobs. (__Sometimes the web page might incorrectly navigate to the lab homepage due to a problem in the proxy server, you can go to the CodaLab url https://bio-nlp.org/codalab/ with the trailing slash, again if this happens__). 
+
+Jobs submitted to our CodaLab instance will be scheduled to our GPU server in UML. This means you can run your experiments on the GPU server without the need of being inside the UML network anymore. Using CodaLab will become more convenient when we have more servers in the future. CodaLab will take care of scheduling jobs to different servers for you.
+
+If you plan to use CodaLab instance through the command line tool `cl` instead of the web page, you can set up the `cl` program with:
+```bash
+cl alias bionlp https://fenway.cs.uml.edu/codalab
+cl work bionlp::
+```
 
 #### cl run
 
-In CodaLab, we use `cl run` to replace the `docker run` that we used before. For example:
+In CodaLab, we use `cl run` to replace the `docker run` that we used before. For example, run this command on our CodaLab:
 
 ```bash
-cl run --request-gpus 2 --request-docker-image jyh1/bento:example code:0x3b5f831f09f04a22bcd3020b7a1cb69c data:0xd4c5712c156f41e48e6400f05cc5441c 'ls -R && python code/main.py data result.txt'
+cl run --request-gpus 2 --request-docker-image jyh1/bento:example code:0x9d49ead692f14d3a8c0e9810dbec9d9c data:0x756af36c15804990aff05367f5e99742 'ls -R && python code/main.py data result.txt'
 ```
 We first use two `--request-*` options to specify the resources we would like to use, which are followed by the bundle dependency declaration. The canonical form of bundle dependency is `<name>:<UUID>` (You can use a shorthand form if referencing bundles from the current worksheet, which will later be expanded to the canonical form). The last part is the command we want to run.
 
-After receiving the `cl run` command, CodaLab will try to schedule it to a worker. Once a worker receives the job, it will: 1. create a container from the image we specified; 2. mount an empty directory and set it as working directory; 3. mount the bundles in the dependency list to the working directory under their names; 4. execute the command in the current directory and wait for it to finish; 5. dismount everything and save the contents of the working directory as a new bundle.
+After receiving the `cl run` command, CodaLab will try to schedule it to a worker. Once a worker receives the job, it will: 1. create a container from the image we specified; 2. mount an empty directory and set it as working directory; 3. mount the bundles in the dependency list to the working directory with their names; 4. execute the command in the current directory and wait for it to finish; 5. dismount everything and save the contents of the working directory as a new bundle.
 
-In the above example, there will be two folders in the working directory, named `code` and `data`. Their contents will be the bundle `0x3b5f...` and `0xd4c5...`.
+In the above example, there will be two folders in the working directory, named `code` and `data`. Their contents will be the bundle `0x9d49...` and `0x756a...`.
 
-Bundles could be files or folders. For folder bundle, you can choose to depend on a child element. For example:
+Bundles could be files or folders. For folder bundles, you can use a sub-path as dependency. For example:
 ```bash
 cl run data:0x233 'cat data/d1.txt'
 ```
@@ -202,7 +213,7 @@ cl run d1:0x233/d1.txt 'cat d1'
 
 ### Run commands on CodaLab
 
-In this section, we will use the same [example](./example) and run it on CodaLab.
+In this section, we will use the same [example](./example) and make it run on CodaLab.
 
 #### Upload code and data
 Upload the code and data to CodaLab, either through the web interface or `cl upload`.
@@ -216,13 +227,28 @@ We upload the code and data separately instead of bundling the code and data tog
 #### Run command
 We can use the image just published on DockerHub to execute our code on CodaLab.
 ```shell
-cl run --request-gpus 2 --request-docker-image jyh1/bento:example :sample.txt :code 'python code/main.py sample.txt result.txt'
+cl run --request-gpus 2 --request-docker-image jyh1/bento:example code:0x9d49ead692f14d3a8c0e9810dbec9d9c sample.txt:0x756af36c15804990aff05367f5e99742 'python code/main.py sample.txt result.txt'
 ```
 
 ## The BENTO Tool Design Pattern
 
-#### Split pipeline into smaller steps
+Publishing your program as a tool might be a bit different with using it in research. The CodaLab itself enforce little restriction on how you should run your programs. However, in order to publish your programs on BENTO and make them flexible, composable and easy to use, it is recommended to adapt your programs to follow some general guidelines which are collectively called the BENTO tool design pattern. 
+
+### Split into smaller steps
+You can certainly make your program do everything from training to evaluation with a single command. Although that might come in handy while doing experiments, it's very inflexible to use. Sometimes we might just want to use the trained model on a new data set. A more sensible approach is to split your pipeline into smaller steps. Each step only performs a single-ish task. We can always take the steps we actually need and compose them into a single pipeline. The BENTO system is optimized for doing this. You can also specify different resource requirement for each step.
 
 
-#### Use command line arguments
+For our purpose, a typical tool might be split into following steps:
+1. Preprocess: Transform raw data to a more usable format. 
+2. Train: Take the processed data as input and produce saved model files.
+3. Predict: Take a saved model and output prediction results on input data.
+4. Evaluate: Evaluate the prediction with gold standard. 
 
+This is just a very general description and might not apply to your programs. You should certainly adapt to your own use case or split into a even smaller steps.
+
+Note this doesn't mean you have to literally split your code into different files. You can use a command line option to control the behavior of the large program.
+
+### Use command-line arguments
+Try using a command-line arguments for everything that you expect users might want to change in your program. This includes the input/output locations and important hyper-parameters. Some people might prefer using a config file when there are too many parameters. Because editing files in BENTO is generally very hard, it is recommended to add some command-line options that are able to override certain important parameters from the config. 
+
+Be aware of some "implicit" file paths in your code. For example, your program might save training results to a folder called `saved_models` and in evaluation steps the program will automatically load weights from that folder. Usually people don't bother to use a command-line options for folders like `saved_models`. It might be better to make all input and output paths explicit in the arguments in BENTO.
