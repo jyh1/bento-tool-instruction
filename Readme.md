@@ -110,7 +110,7 @@ root@f590d7c561e1:/opt/example# python -c 'import nltk; nltk.download("punkt", d
 [nltk_data]   Unzipping tokenizers/punkt.zip.
 ```
 
-(The default download location for nltk_data is `~/nltk_data`, we change it here so the container will work when we login as other user).
+The default download location for nltk_data is `~/nltk_data`, we change it to a user-agnostic position so it will work when migrating to CodaLab (CodaLab will execute your command with a newly created user in the container).
 
 Keep installing missing packages until your program runs correctly. Meanwhile, you can edit your code files with editors in the host system if needed.
 ```bash
